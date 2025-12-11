@@ -245,12 +245,14 @@ async function fetchConfig(): Promise<Config> {
   return cfg;
 }
 
-async function fetchReport(): Promise<Report | null> {
-  const res = await fetch(
-    `/api/report?projectId=${encodeURIComponent(
-      currentProjectId
-    )}&profileId=${encodeURIComponent(currentProfileId)}`
-  );
+async function fetchReport(generate = false): Promise<Report | null> {
+  const params = new URLSearchParams({
+    projectId: currentProjectId,
+    profileId: currentProfileId,
+  });
+  if (generate) params.set("generate", "true");
+
+  const res = await fetch(`/api/report?${params.toString()}`);
   if (!res.ok) return null;
   return res.json();
 }
@@ -375,10 +377,10 @@ async function start() {
       conversationIdLabel.textContent = conversationId;
     }
 
-    // Fetch config + report in parallel
+    // Fetch config + fresh CodeRabbit report in parallel
     const [config, report] = await Promise.all([
       fetchConfig(),
-      cachedReport ? Promise.resolve(cachedReport) : fetchReport(),
+      fetchReport(true), // Always generate fresh report at call start
     ]);
     cachedReport = report;
     renderReport(report || undefined);
