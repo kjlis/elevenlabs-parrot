@@ -47,6 +47,7 @@ const anamVideo = $("anam-video") as HTMLVideoElement;
 const avatarPlaceholder = $("avatar-placeholder") as HTMLDivElement;
 const errorContainer = $("error-container") as HTMLDivElement;
 const errorText = $("error-text") as HTMLParagraphElement;
+const liveRegion = $("live-region") as HTMLDivElement | null;
 const reportCard = $("report-card") as HTMLDivElement | null;
 const reportBody = $("report-body") as HTMLDivElement | null;
 const reportMeta = $("report-meta") as HTMLDivElement | null;
@@ -54,6 +55,8 @@ const projectSelect = $("project-select") as HTMLSelectElement | null;
 const refreshReportBtn = $("refresh-report") as HTMLButtonElement | null;
 const loadTranscriptBtn = $("load-transcript") as HTMLButtonElement | null;
 const conversationIdLabel = $("conversation-id") as HTMLSpanElement | null;
+const transcriptList = $("transcript-list") as HTMLSelectElement | null;
+const refreshSpinner = $("refresh-spinner") as HTMLSpanElement | null;
 
 // initialize project from URL or select default
 const urlProject = new URLSearchParams(window.location.search).get("projectId");
@@ -112,6 +115,9 @@ function showError(message: string) {
   errorText.textContent = message;
   errorContainer.classList.remove("hidden");
   setTimeout(() => errorContainer.classList.add("hidden"), 5000);
+  if (liveRegion) {
+    liveRegion.textContent = message;
+  }
 }
 
 function renderReport(report?: Report) {
@@ -206,6 +212,7 @@ async function loadReport(triggeredByRefresh = false) {
   if (isRefreshing) return;
   isRefreshing = true;
   if (refreshReportBtn) refreshReportBtn.disabled = true;
+  if (refreshSpinner) refreshSpinner.classList.remove("hidden");
   try {
     cachedReport = await fetchReport();
     renderReport(cachedReport || undefined);
@@ -221,6 +228,7 @@ async function loadReport(triggeredByRefresh = false) {
   } finally {
     isRefreshing = false;
     if (refreshReportBtn) refreshReportBtn.disabled = false;
+    if (refreshSpinner) refreshSpinner.classList.add("hidden");
   }
 }
 
@@ -231,7 +239,9 @@ async function fetchTranscriptHistory() {
   }
   try {
     const res = await fetch(
-      `/api/transcript?conversationId=${encodeURIComponent(conversationId)}`
+      `/api/transcript?conversationId=${encodeURIComponent(
+        conversationId
+      )}&projectId=${encodeURIComponent(currentProjectId)}`
     );
     if (!res.ok) {
       showError("Failed to load transcript");
@@ -251,6 +261,32 @@ async function fetchTranscriptHistory() {
   } catch (error) {
     console.error("Transcript history error:", error);
     showError("Failed to load transcript");
+  }
+}
+
+async function fetchTranscriptList() {
+  if (!transcriptList) return;
+  try {
+    const res = await fetch(
+      `/api/transcript?projectId=${encodeURIComponent(
+        currentProjectId
+      )}&limit=10`
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data)) return;
+    transcriptList.innerHTML = `<option value="">Last transcripts…</option>`;
+    data.forEach((item: any) => {
+      const label = `${item.conversationId} • ${new Date(
+        item.lastTs
+      ).toLocaleString()}`;
+      const option = document.createElement("option");
+      option.value = item.conversationId;
+      option.textContent = label;
+      transcriptList.appendChild(option);
+    });
+  } catch (error) {
+    console.warn("Transcript list error:", error);
   }
 }
 
@@ -295,28 +331,37 @@ async function start() {
     });
 
     // Connect to ElevenLabs
-    await connectElevenLabs(config.elevenLabsAgentId, {
-      onReady: () => {
-        setConnected(true);
-        addMessage("system", "Connected. Start speaking...");
+    await connectElevenLabs(
+      config.elevenLabsAgentId,
+      {
+        onReady: () => {
+          setConnected(true);
+          addMessage("system", "Connected. Start speaking...");
+        },
+        onAudio: (audio) => {
+          agentAudioInputStream.sendAudioChunk(audio);
+        },
+        onUserTranscript: (text) => addMessage("user", text),
+        onAgentResponse: (text) => {
+          agentAudioInputStream.endSequence();
+          addMessage("agent", text);
+        },
+        onInterrupt: () => {
+          addMessage("agent", "Interrupted");
+          anamClient?.interruptPersona();
+          agentAudioInputStream.endSequence();
+        },
+        onDisconnect: () => setConnected(false),
+        onError: () => showError("Connection error"),
+        onContextTruncated: (original, sent) => {
+          addMessage(
+            "system",
+            `Context truncated (${sent}/${original} chars).`
+          );
+        },
       },
-      onAudio: (audio) => {
-        agentAudioInputStream.sendAudioChunk(audio);
-      },
-      onUserTranscript: (text) => addMessage("user", text),
-      onAgentResponse: (text) => {
-        agentAudioInputStream.endSequence();
-        addMessage("agent", text);
-      },
-      onInterrupt: () => {
-        addMessage("agent", "Interrupted");
-        anamClient?.interruptPersona();
-        agentAudioInputStream.endSequence();
-      },
-      onDisconnect: () => setConnected(false),
-      onError: () => showError("Connection error"),
-    },
-    buildContextText(report || undefined));
+      buildContextText(report || undefined)
+    );
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to start");
     btnText.textContent = "Start Conversation";
@@ -353,9 +398,17 @@ projectSelect?.addEventListener("change", () => {
   url.searchParams.set("projectId", currentProjectId);
   window.history.replaceState({}, "", url.toString());
   void loadReport(true);
+  void fetchTranscriptList();
 });
 
 refreshReportBtn?.addEventListener("click", () => void loadReport(true));
 loadTranscriptBtn?.addEventListener("click", () => void fetchTranscriptHistory());
+transcriptList?.addEventListener("change", () => {
+  const selected = transcriptList.value;
+  if (!selected) return;
+  conversationId = selected;
+  if (conversationIdLabel) conversationIdLabel.textContent = conversationId;
+  void fetchTranscriptHistory();
+});
 
 console.log("ElevenLabs + Anam Demo ready");

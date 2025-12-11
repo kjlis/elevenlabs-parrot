@@ -7,6 +7,7 @@
 import { MicrophoneCapture, arrayBufferToBase64 } from "chatdio";
 
 const SAMPLE_RATE = 16000;
+const CONTEXT_LIMIT = 8000; // chars
 
 let websocket: WebSocket | null = null;
 let micCapture: MicrophoneCapture | null = null;
@@ -34,6 +35,7 @@ export interface ElevenLabsCallbacks {
   onInterrupt?: () => void;
   onDisconnect?: () => void;
   onError?: () => void;
+  onContextTruncated?: (original: number, sent: number) => void;
 }
 
 /**
@@ -76,13 +78,20 @@ export async function connectElevenLabs(
     audioChunkCount = 0;
     await setupMicrophone();
     if (contextText) {
+      const truncated =
+        contextText.length > CONTEXT_LIMIT
+          ? contextText.slice(0, CONTEXT_LIMIT)
+          : contextText;
       websocket?.send(
-        JSON.stringify({ type: "contextual_update", text: contextText })
+        JSON.stringify({ type: "contextual_update", text: truncated })
       );
       console.log(
         "[11Labs] Sent contextual_update (chars):",
-        contextText.length
+        truncated.length
       );
+      if (truncated.length !== contextText.length) {
+        callbacks.onContextTruncated?.(contextText.length, truncated.length);
+      }
     }
     callbacks.onReady?.();
   };

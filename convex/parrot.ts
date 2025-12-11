@@ -66,3 +66,33 @@ export const listTranscript = query({
       .collect();
   },
 });
+
+export const listRecentConversations = query({
+  args: {
+    projectId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler(ctx, { projectId, limit }) {
+    const byProject = ctx.db
+      .query("transcripts")
+      .withIndex("project", (q) => q.eq("projectId", projectId))
+      .order("desc")
+      .take(limit ?? 10);
+
+    const seen = new Set<string>();
+    const conversations: { conversationId: string; lastTs: number }[] = [];
+
+    for (const row of byProject) {
+      if (!seen.has(row.conversationId)) {
+        seen.add(row.conversationId);
+        conversations.push({
+          conversationId: row.conversationId,
+          lastTs: row.ts,
+        });
+      }
+      if (conversations.length >= (limit ?? 10)) break;
+    }
+
+    return conversations.sort((a, b) => b.lastTs - a.lastTs);
+  },
+});

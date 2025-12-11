@@ -19,5 +19,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
     text: v.string(),
     ts: v.number(),
-  }).index("conversation", ["conversationId", "ts"]),
+  })
+    .index("conversation", ["conversationId", "ts"])
+    .index("project", ["projectId", "ts"]),
 });

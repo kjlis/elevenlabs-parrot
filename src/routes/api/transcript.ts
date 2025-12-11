@@ -7,6 +7,8 @@ type TranscriptPayload = {
   text?: string;
 };
 
+const DEFAULT_LIMIT = 10;
+
 export const Transcript = async (c: Context) => {
   const convexUrl = c.env.CONVEX_URL || c.env.VITE_CONVEX_URL;
   if (!convexUrl) {
@@ -18,10 +20,36 @@ export const Transcript = async (c: Context) => {
 
   if (c.req.method === "GET") {
     const conversationId = c.req.query("conversationId");
-    if (!conversationId) {
-      return c.json({ error: "conversationId is required" }, 400);
-    }
+    const projectId =
+      c.req.query("projectId") || c.env.REPORT_PROJECT_ID || "default-project";
+    const limit = Number(c.req.query("limit") || DEFAULT_LIMIT);
+
     try {
+      if (conversationId) {
+        const res = await fetch(`${convexUrl}/api/query`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(c.env.CONVEX_ADMIN_KEY
+              ? { Authorization: `Bearer ${c.env.CONVEX_ADMIN_KEY}` }
+              : {}),
+          },
+          body: JSON.stringify({
+            path: "parrot:listTranscript",
+            args: { conversationId },
+            format: "json",
+          }),
+        });
+        if (!res.ok) {
+          const msg = await res.text();
+          console.error("Convex transcript fetch error:", res.status, msg);
+          return c.json({ error: "Failed to load transcript" }, 502);
+        }
+        const data = await res.json();
+        return c.json(data?.status === "success" ? data.value : data);
+      }
+
+      // List recent conversations by project
       const res = await fetch(`${convexUrl}/api/query`, {
         method: "POST",
         headers: {
@@ -31,15 +59,15 @@ export const Transcript = async (c: Context) => {
             : {}),
         },
         body: JSON.stringify({
-          path: "parrot:listTranscript",
-          args: { conversationId },
+          path: "parrot:listRecentConversations",
+          args: { projectId, limit },
           format: "json",
         }),
       });
       if (!res.ok) {
         const msg = await res.text();
-        console.error("Convex transcript fetch error:", res.status, msg);
-        return c.json({ error: "Failed to load transcript" }, 502);
+        console.error("Convex recent transcript fetch error:", res.status, msg);
+        return c.json({ error: "Failed to load transcripts" }, 502);
       }
       const data = await res.json();
       return c.json(data?.status === "success" ? data.value : data);
