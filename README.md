@@ -19,7 +19,7 @@ A demonstration of integrating [ElevenLabs Conversational AI](https://elevenlabs
 └─────────────┘
 ```
 
-### The Flow
+### Conversation Flow
 
 1. **User speaks** → Microphone captures audio at 16kHz
 2. **Audio sent to ElevenLabs** → Via WebSocket as base64-encoded PCM16
@@ -27,6 +27,12 @@ A demonstration of integrating [ElevenLabs Conversational AI](https://elevenlabs
 4. **Agent audio returned** → PCM16 chunks arrive faster than realtime
 5. **Audio sent to Anam** → Via `createAudioPassthroughStream()` for lip-sync
 6. **Avatar animates** → Anam renders lip-sync in sync with the audio
+
+### Report Context Flow
+
+1. **Worker fetches latest CodeRabbit report** via `/api/report` (static `public/report.json` or `REPORT_SOURCE_URL`).
+2. **Client shows summary** above the transcript.
+3. **Context sent to ElevenLabs** on WebSocket open using `contextual_update`, so the agent answers with project-specific details.
 
 ### Key Concept: Audio Passthrough
 
@@ -63,7 +69,7 @@ audioStream.endOfSpeech();
 
 ```bash
 git clone <repo-url>
-cd agent_11labs
+cd elevenlabs-parrot
 bun install
 ```
 
@@ -75,15 +81,22 @@ Create a `.dev.vars` file in the project root:
 ANAM_API_KEY=your_anam_api_key
 ANAM_AVATAR_ID=your_avatar_id
 ELEVENLABS_AGENT_ID=your_agent_id
+# Optional: point to a live summary instead of the local JSON
+# REPORT_SOURCE_URL=https://your-hosted-coderabbit-summary.json
 ```
 
-### 3. Run the development server
+### 3. Provide a report
+
+- Easiest: edit `public/report.json` (sample provided) with your CodeRabbit summary, or
+- Host the JSON elsewhere and set `REPORT_SOURCE_URL` to that URL.
+
+### 4. Run the development server
 
 ```bash
 bun run dev
 ```
 
-### 4. Open in browser
+### 5. Open in browser
 
 Navigate to `http://localhost:5173` and click **Start Conversation**.
 
@@ -98,7 +111,10 @@ src/
 └── routes/
     ├── index.tsx      # Main page UI
     └── api/
-        └── config.ts  # Server-side config endpoint
+        ├── config.ts  # Server-side config endpoint
+        └── report.ts  # Latest report endpoint (static or remote)
+public/
+└── report.json        # Local fallback CodeRabbit summary
 ```
 
 ## Architecture Details
@@ -130,6 +146,7 @@ Connects to ElevenLabs via WebSocket and handles:
 - Sending user audio as base64-encoded PCM16
 - Receiving agent audio chunks
 - Handling interruptions (barge-in)
+- Sends `contextual_update` on connect when a report summary is available
 
 ### Client Orchestration (`src/client.ts`)
 
@@ -150,6 +167,9 @@ onAgentResponse: (text) => {
 onInterrupt: () => {
   anamClient?.interruptPersona();
 },
+
+// Pass report text to ElevenLabs once at connect time
+connectElevenLabs(agentId, callbacks, buildContextText(report));
 ```
 
 ## Environment Variables
@@ -159,6 +179,7 @@ onInterrupt: () => {
 | `ANAM_API_KEY` | Anam API key | [lab.anam.ai](https://lab.anam.ai) → Settings → API Keys |
 | `ANAM_AVATAR_ID` | Avatar to render | [lab.anam.ai](https://lab.anam.ai) → Avatars |
 | `ELEVENLABS_AGENT_ID` | ElevenLabs Agent ID | [elevenlabs.io](https://elevenlabs.io) → Agents |
+| `REPORT_SOURCE_URL` | (Optional) URL to latest CodeRabbit summary JSON | Any reachable URL returning the report shape |
 
 ## ElevenLabs Agent Configuration
 
