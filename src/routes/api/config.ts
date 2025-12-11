@@ -65,6 +65,7 @@ export const Config = async (c: Context) => {
       body: JSON.stringify({
         personaConfig: {
           avatarId: selected.anamAvatarId,
+          avatarOnly: true,
           enableAudioPassthrough: true,
         },
       }),

@@ -221,7 +221,7 @@ function buildContextText(report?: Report) {
 }
 
 async function fetchConfig(): Promise<Config> {
-  const res = await fetch("/api/config");
+  const res = await fetch(`/api/config?profileId=${encodeURIComponent(currentProfileId)}`);
   if (!res.ok) throw new Error("Failed to load config");
   const cfg: Config = await res.json();
 
