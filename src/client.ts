@@ -16,6 +16,8 @@ let isConnected = false;
 let anamClient: AnamClient | null = null;
 let cachedReport: Report | null = null;
 let conversationId: string | null = null;
+let currentProjectId = "parrot/demo";
+let isRefreshing = false;
 
 interface Config {
   anamSessionToken: string;
@@ -28,6 +30,8 @@ interface Report {
   from: string;
   to: string;
   summary: string;
+  generatedAt?: number;
+  source?: string;
 }
 
 // ============================================================================
@@ -45,6 +49,20 @@ const errorContainer = $("error-container") as HTMLDivElement;
 const errorText = $("error-text") as HTMLParagraphElement;
 const reportCard = $("report-card") as HTMLDivElement | null;
 const reportBody = $("report-body") as HTMLDivElement | null;
+const reportMeta = $("report-meta") as HTMLDivElement | null;
+const projectSelect = $("project-select") as HTMLSelectElement | null;
+const refreshReportBtn = $("refresh-report") as HTMLButtonElement | null;
+const loadTranscriptBtn = $("load-transcript") as HTMLButtonElement | null;
+const conversationIdLabel = $("conversation-id") as HTMLSpanElement | null;
+
+// initialize project from URL or select default
+const urlProject = new URLSearchParams(window.location.search).get("projectId");
+if (urlProject) {
+  currentProjectId = urlProject;
+}
+if (projectSelect) {
+  projectSelect.value = currentProjectId;
+}
 
 // ============================================================================
 // UI HELPERS
@@ -101,6 +119,7 @@ function renderReport(report?: Report) {
   if (!report) {
     reportBody.innerHTML =
       '<p class="text-zinc-500">No report available. Provide public/report.json or set REPORT_SOURCE_URL.</p>';
+    if (reportMeta) reportMeta.textContent = "";
     return;
   }
 
@@ -125,6 +144,15 @@ function renderReport(report?: Report) {
 
   reportBody.appendChild(header);
   reportBody.appendChild(pre);
+
+  if (reportMeta) {
+    const date =
+      report.generatedAt && !Number.isNaN(report.generatedAt)
+        ? new Date(report.generatedAt).toLocaleString()
+        : "unknown";
+    const source = report.source || "unknown";
+    reportMeta.textContent = `Updated: ${date} • Source: ${source}`;
+  }
 }
 
 function buildContextText(report?: Report) {
@@ -145,7 +173,9 @@ async function fetchConfig(): Promise<Config> {
 }
 
 async function fetchReport(): Promise<Report | null> {
-  const res = await fetch("/api/report");
+  const res = await fetch(
+    `/api/report?projectId=${encodeURIComponent(currentProjectId)}`
+  );
   if (!res.ok) return null;
   return res.json();
 }
@@ -155,7 +185,7 @@ async function persistTranscript(
   text: string
 ) {
   if (!conversationId) return;
-  const projectId = cachedReport?.projectId || "default-project";
+  const projectId = currentProjectId || cachedReport?.projectId || "default-project";
   try {
     await fetch("/api/transcript", {
       method: "POST",
@@ -172,13 +202,55 @@ async function persistTranscript(
   }
 }
 
-async function loadReport() {
+async function loadReport(triggeredByRefresh = false) {
+  if (isRefreshing) return;
+  isRefreshing = true;
+  if (refreshReportBtn) refreshReportBtn.disabled = true;
   try {
     cachedReport = await fetchReport();
     renderReport(cachedReport || undefined);
+    if (triggeredByRefresh) {
+      addMessage(
+        "system",
+        cachedReport ? "Report refreshed." : "No report found."
+      );
+    }
   } catch (error) {
     console.error("Report load error:", error);
     renderReport(undefined);
+  } finally {
+    isRefreshing = false;
+    if (refreshReportBtn) refreshReportBtn.disabled = false;
+  }
+}
+
+async function fetchTranscriptHistory() {
+  if (!conversationId) {
+    showError("No conversation yet");
+    return;
+  }
+  try {
+    const res = await fetch(
+      `/api/transcript?conversationId=${encodeURIComponent(conversationId)}`
+    );
+    if (!res.ok) {
+      showError("Failed to load transcript");
+      return;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      showError("Transcript response invalid");
+      return;
+    }
+    transcript.innerHTML = "";
+    data.forEach((entry: any) => {
+      const role = entry.role as "user" | "agent" | "system";
+      const text = entry.text as string;
+      addMessage(role, text);
+    });
+  } catch (error) {
+    console.error("Transcript history error:", error);
+    showError("Failed to load transcript");
   }
 }
 
@@ -192,6 +264,9 @@ async function start() {
 
   try {
     conversationId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+    if (conversationIdLabel) {
+      conversationIdLabel.textContent = conversationId;
+    }
 
     // Fetch config + report in parallel
     const [config, report] = await Promise.all([
@@ -271,5 +346,16 @@ connectBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("beforeunload", stop);
+
+projectSelect?.addEventListener("change", () => {
+  currentProjectId = projectSelect.value;
+  const url = new URL(window.location.href);
+  url.searchParams.set("projectId", currentProjectId);
+  window.history.replaceState({}, "", url.toString());
+  void loadReport(true);
+});
+
+refreshReportBtn?.addEventListener("click", () => void loadReport(true));
+loadTranscriptBtn?.addEventListener("click", () => void fetchTranscriptHistory());
 
 console.log("ElevenLabs + Anam Demo ready");
