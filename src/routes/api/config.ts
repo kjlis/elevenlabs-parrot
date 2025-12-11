@@ -14,11 +14,14 @@ export const Config = async (c: Context) => {
   const elevenLabsApiKey = c.env.ELEVENLABS_API_KEY;
   const profilesJson = c.env.PROFILES_JSON;
 
-  if (!anamApiKey || !avatarId || !elevenLabsAgentId) {
+  const hasProfiles = profilesJson && profilesJson.trim().length > 0;
+  const hasDefaultEnv = anamApiKey && avatarId && elevenLabsAgentId;
+
+  if (!hasProfiles && !hasDefaultEnv) {
     return c.json(
       {
         error:
-          "Missing environment variables. Check ANAM_API_KEY, ANAM_AVATAR_ID, and ELEVENLABS_AGENT_ID",
+          "Missing environment variables. Provide PROFILES_JSON or set ANAM_API_KEY, ANAM_AVATAR_ID, ELEVENLABS_AGENT_ID",
       },
       500
     );
