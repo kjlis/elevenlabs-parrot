@@ -11,6 +11,7 @@
   "dependencies": {
     "@anam-ai/js-sdk": "4.7.0",
     "chatdio": "^1.2.1",
+    "convex": "^1.31.0",
     "hono": "^4.10.7"
   },
   "devDependencies": {

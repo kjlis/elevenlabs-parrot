@@ -7,6 +7,7 @@
 import { MicrophoneCapture, arrayBufferToBase64 } from "chatdio";
 
 const SAMPLE_RATE = 16000;
+const CONTEXT_LIMIT = 8000; // chars
 
 let websocket: WebSocket | null = null;
 let micCapture: MicrophoneCapture | null = null;
@@ -34,6 +35,7 @@ export interface ElevenLabsCallbacks {
   onInterrupt?: () => void;
   onDisconnect?: () => void;
   onError?: () => void;
+  onContextTruncated?: (original: number, sent: number) => void;
 }
 
 /**
@@ -65,24 +67,36 @@ async function setupMicrophone() {
 export async function connectElevenLabs(
   agentId: string,
   callbacks: ElevenLabsCallbacks,
-  contextText?: string
+  contextText?: string,
+  apiKey?: string
 ) {
-  websocket = new WebSocket(
-    `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`
-  );
+  const url = new URL("wss://api.elevenlabs.io/v1/convai/conversation");
+  url.searchParams.set("agent_id", agentId);
+  if (apiKey) {
+    url.searchParams.set("xi_api_key", apiKey);
+  }
+
+  websocket = new WebSocket(url.toString());
 
   websocket.onopen = async () => {
     console.log("[11Labs] WebSocket connected");
     audioChunkCount = 0;
     await setupMicrophone();
     if (contextText) {
+      const truncated =
+        contextText.length > CONTEXT_LIMIT
+          ? contextText.slice(0, CONTEXT_LIMIT)
+          : contextText;
       websocket?.send(
-        JSON.stringify({ type: "contextual_update", text: contextText })
+        JSON.stringify({ type: "contextual_update", text: truncated })
       );
       console.log(
         "[11Labs] Sent contextual_update (chars):",
-        contextText.length
+        truncated.length
       );
+      if (truncated.length !== contextText.length) {
+        callbacks.onContextTruncated?.(contextText.length, truncated.length);
+      }
     }
     callbacks.onReady?.();
   };

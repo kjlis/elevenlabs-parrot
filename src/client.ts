@@ -15,10 +15,14 @@ import { connectElevenLabs, stopElevenLabs } from "./elevenlabs";
 let isConnected = false;
 let anamClient: AnamClient | null = null;
 let cachedReport: Report | null = null;
+let conversationId: string | null = null;
+let currentProjectId = "parrot/demo";
+let isRefreshing = false;
 
 interface Config {
   anamSessionToken: string;
   elevenLabsAgentId: string;
+  elevenLabsApiKey?: string;
 }
 
 interface Report {
@@ -27,6 +31,8 @@ interface Report {
   from: string;
   to: string;
   summary: string;
+  generatedAt?: number;
+  source?: string;
 }
 
 // ============================================================================
@@ -42,8 +48,28 @@ const anamVideo = $("anam-video") as HTMLVideoElement;
 const avatarPlaceholder = $("avatar-placeholder") as HTMLDivElement;
 const errorContainer = $("error-container") as HTMLDivElement;
 const errorText = $("error-text") as HTMLParagraphElement;
+const liveRegion = $("live-region") as HTMLDivElement | null;
 const reportCard = $("report-card") as HTMLDivElement | null;
 const reportBody = $("report-body") as HTMLDivElement | null;
+const reportMeta = $("report-meta") as HTMLDivElement | null;
+const projectSelect = $("project-select") as HTMLSelectElement | null;
+const refreshReportBtn = $("refresh-report") as HTMLButtonElement | null;
+const loadTranscriptBtn = $("load-transcript") as HTMLButtonElement | null;
+const conversationIdLabel = $("conversation-id") as HTMLSpanElement | null;
+const transcriptList = $("transcript-list") as HTMLSelectElement | null;
+const refreshSpinner = $("refresh-spinner") as HTMLSpanElement | null;
+
+// initialize project from URL, localStorage, or default
+const urlProject = new URLSearchParams(window.location.search).get("projectId");
+const storedProject = localStorage.getItem("parrot:projectId");
+if (urlProject) {
+  currentProjectId = urlProject;
+} else if (storedProject) {
+  currentProjectId = storedProject;
+}
+if (projectSelect) {
+  projectSelect.value = currentProjectId;
+}
 
 // ============================================================================
 // UI HELPERS
@@ -85,12 +111,17 @@ function addMessage(role: "user" | "agent" | "system", text: string) {
     </div>`
   );
   transcript.scrollTop = transcript.scrollHeight;
+
+  void persistTranscript(role, text);
 }
 
 function showError(message: string) {
   errorText.textContent = message;
   errorContainer.classList.remove("hidden");
   setTimeout(() => errorContainer.classList.add("hidden"), 5000);
+  if (liveRegion) {
+    liveRegion.textContent = message;
+  }
 }
 
 function renderReport(report?: Report) {
@@ -98,6 +129,7 @@ function renderReport(report?: Report) {
   if (!report) {
     reportBody.innerHTML =
       '<p class="text-zinc-500">No report available. Provide public/report.json or set REPORT_SOURCE_URL.</p>';
+    if (reportMeta) reportMeta.textContent = "";
     return;
   }
 
@@ -122,6 +154,15 @@ function renderReport(report?: Report) {
 
   reportBody.appendChild(header);
   reportBody.appendChild(pre);
+
+  if (reportMeta) {
+    const date =
+      report.generatedAt && !Number.isNaN(report.generatedAt)
+        ? new Date(report.generatedAt).toLocaleString()
+        : "unknown";
+    const source = report.source || "unknown";
+    reportMeta.textContent = `Updated: ${date} • Source: ${source}`;
+  }
 }
 
 function buildContextText(report?: Report) {
@@ -142,18 +183,114 @@ async function fetchConfig(): Promise<Config> {
 }
 
 async function fetchReport(): Promise<Report | null> {
-  const res = await fetch("/api/report");
+  const res = await fetch(
+    `/api/report?projectId=${encodeURIComponent(currentProjectId)}`
+  );
   if (!res.ok) return null;
   return res.json();
 }
 
-async function loadReport() {
+async function persistTranscript(
+  role: "user" | "agent" | "system",
+  text: string
+) {
+  if (!conversationId) return;
+  const projectId = currentProjectId || cachedReport?.projectId || "default-project";
+  try {
+    await fetch("/api/transcript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        conversationId,
+        role,
+        text,
+      }),
+    });
+  } catch (error) {
+    console.warn("Transcript persist failed:", error);
+  }
+}
+
+async function loadReport(triggeredByRefresh = false) {
+  if (isRefreshing) return;
+  isRefreshing = true;
+  if (refreshReportBtn) refreshReportBtn.disabled = true;
+  if (refreshSpinner) refreshSpinner.classList.remove("hidden");
   try {
     cachedReport = await fetchReport();
     renderReport(cachedReport || undefined);
+    if (triggeredByRefresh) {
+      addMessage(
+        "system",
+        cachedReport ? "Report refreshed." : "No report found."
+      );
+    }
   } catch (error) {
     console.error("Report load error:", error);
     renderReport(undefined);
+  } finally {
+    isRefreshing = false;
+    if (refreshReportBtn) refreshReportBtn.disabled = false;
+    if (refreshSpinner) refreshSpinner.classList.add("hidden");
+  }
+}
+
+async function fetchTranscriptHistory() {
+  if (!conversationId) {
+    showError("No conversation yet");
+    return;
+  }
+  try {
+    const res = await fetch(
+      `/api/transcript?conversationId=${encodeURIComponent(
+        conversationId
+      )}&projectId=${encodeURIComponent(currentProjectId)}`
+    );
+    if (!res.ok) {
+      showError("Failed to load transcript");
+      return;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      showError("Transcript response invalid");
+      return;
+    }
+    transcript.innerHTML = "";
+    data.forEach((entry: any) => {
+      const role = entry.role as "user" | "agent" | "system";
+      const text = entry.text as string;
+      addMessage(role, text);
+    });
+  } catch (error) {
+    console.error("Transcript history error:", error);
+    showError("Failed to load transcript");
+  }
+}
+
+async function fetchTranscriptList() {
+  if (!transcriptList) return;
+  try {
+    const res = await fetch(
+      `/api/transcript?projectId=${encodeURIComponent(
+        currentProjectId
+      )}&limit=10`
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data)) return;
+    transcriptList.innerHTML = `<option value="">Last transcripts…</option>`;
+    data.forEach((item: any) => {
+      const label = `${item.conversationId} • ${new Date(
+        item.lastTs
+      ).toLocaleString()}`;
+      const option = document.createElement("option");
+      option.value = item.conversationId;
+      option.textContent = label;
+      transcriptList.appendChild(option);
+    });
+  } catch (error) {
+    console.warn("Transcript list error:", error);
   }
 }
 
@@ -166,6 +303,11 @@ async function start() {
   btnText.textContent = "Connecting...";
 
   try {
+    conversationId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+    if (conversationIdLabel) {
+      conversationIdLabel.textContent = conversationId;
+    }
+
     // Fetch config + report in parallel
     const [config, report] = await Promise.all([
       fetchConfig(),
@@ -193,28 +335,38 @@ async function start() {
     });
 
     // Connect to ElevenLabs
-    await connectElevenLabs(config.elevenLabsAgentId, {
-      onReady: () => {
-        setConnected(true);
-        addMessage("system", "Connected. Start speaking...");
+    await connectElevenLabs(
+      config.elevenLabsAgentId,
+      {
+        onReady: () => {
+          setConnected(true);
+          addMessage("system", "Connected. Start speaking...");
+        },
+        onAudio: (audio) => {
+          agentAudioInputStream.sendAudioChunk(audio);
+        },
+        onUserTranscript: (text) => addMessage("user", text),
+        onAgentResponse: (text) => {
+          agentAudioInputStream.endSequence();
+          addMessage("agent", text);
+        },
+        onInterrupt: () => {
+          addMessage("agent", "Interrupted");
+          anamClient?.interruptPersona();
+          agentAudioInputStream.endSequence();
+        },
+        onDisconnect: () => setConnected(false),
+        onError: () => showError("Connection error"),
+        onContextTruncated: (original, sent) => {
+          addMessage(
+            "system",
+            `Context truncated (${sent}/${original} chars).`
+          );
+        },
       },
-      onAudio: (audio) => {
-        agentAudioInputStream.sendAudioChunk(audio);
-      },
-      onUserTranscript: (text) => addMessage("user", text),
-      onAgentResponse: (text) => {
-        agentAudioInputStream.endSequence();
-        addMessage("agent", text);
-      },
-      onInterrupt: () => {
-        addMessage("agent", "Interrupted");
-        anamClient?.interruptPersona();
-        agentAudioInputStream.endSequence();
-      },
-      onDisconnect: () => setConnected(false),
-      onError: () => showError("Connection error"),
-    },
-    buildContextText(report || undefined));
+      buildContextText(report || undefined),
+      config.elevenLabsApiKey
+    );
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to start");
     btnText.textContent = "Start Conversation";
@@ -244,5 +396,25 @@ connectBtn.addEventListener("click", () => {
 });
 
 window.addEventListener("beforeunload", stop);
+
+projectSelect?.addEventListener("change", () => {
+  currentProjectId = projectSelect.value;
+  const url = new URL(window.location.href);
+  url.searchParams.set("projectId", currentProjectId);
+  window.history.replaceState({}, "", url.toString());
+  localStorage.setItem("parrot:projectId", currentProjectId);
+  void loadReport(true);
+  void fetchTranscriptList();
+});
+
+refreshReportBtn?.addEventListener("click", () => void loadReport(true));
+loadTranscriptBtn?.addEventListener("click", () => void fetchTranscriptHistory());
+transcriptList?.addEventListener("change", () => {
+  const selected = transcriptList.value;
+  if (!selected) return;
+  conversationId = selected;
+  if (conversationIdLabel) conversationIdLabel.textContent = conversationId;
+  void fetchTranscriptHistory();
+});
 
 console.log("ElevenLabs + Anam Demo ready");

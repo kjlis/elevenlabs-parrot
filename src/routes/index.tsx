@@ -109,12 +109,37 @@ export const Index = (c: Context) => {
 
           {/* Controls card */}
           <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-xl p-6 space-y-5">
+            {/* Project + actions */}
+            <div class="flex flex-col gap-2">
+              <label class="text-xs text-zinc-400 uppercase tracking-wider">
+                Project
+              </label>
+              <div class="flex items-center gap-3">
+                <select
+                  id="project-select"
+                  class="flex-1 bg-zinc-800/60 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-labs-500"
+                >
+                  <option value="parrot/demo">parrot/demo</option>
+                  <option value="default-project">default-project</option>
+                  <option value="example/repo">example/repo</option>
+                </select>
+                <button
+                  id="refresh-report"
+                  class="px-3 py-2 text-xs font-medium rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 hover:bg-zinc-700 transition-colors flex items-center gap-2"
+                >
+                  <span id="refresh-spinner" class="w-3 h-3 rounded-full border-2 border-zinc-500 border-t-transparent animate-spin hidden"></span>
+                  <span>Refresh</span>
+                </button>
+              </div>
+            </div>
+
             {/* Report summary */}
             <div id="report-card" class="bg-zinc-800/40 border border-zinc-800 rounded-lg p-4 space-y-2">
               <div class="flex items-center justify-between text-xs text-zinc-400 uppercase tracking-wider">
                 <span>Latest Report</span>
                 <span class="text-[10px] text-zinc-500">CodeRabbit</span>
               </div>
+              <div class="text-xs text-zinc-500" id="report-meta">Loading...</div>
               <div id="report-body" class="text-sm text-zinc-200 whitespace-pre-wrap">
                 Loading report...
               </div>
@@ -152,9 +177,27 @@ export const Index = (c: Context) => {
 
             {/* Transcript area */}
             <div class="space-y-2">
-              <label class="block text-xs text-zinc-400 uppercase tracking-wider">
-                Transcript
-              </label>
+              <div class="flex items-center justify-between">
+                <label class="block text-xs text-zinc-400 uppercase tracking-wider">
+                  Transcript
+                </label>
+                <div class="flex items-center gap-3">
+                  <button
+                    id="load-transcript"
+                    class="text-xs text-zinc-300 hover:text-labs-400 transition-colors"
+                    type="button"
+                  >
+                    Load saved
+                  </button>
+                  <select
+                    id="transcript-list"
+                    class="bg-zinc-800/60 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100 focus:outline-none"
+                  >
+                    <option value="">Last transcripts…</option>
+                  </select>
+                  <span id="conversation-id" class="text-[10px] text-zinc-500"></span>
+                </div>
+              </div>
               <div
                 id="transcript"
                 class="h-48 overflow-y-auto bg-zinc-800/30 border border-zinc-800 rounded-lg p-4 text-sm space-y-3"
@@ -196,6 +239,9 @@ export const Index = (c: Context) => {
             </a>
           </p>
         </footer>
+
+        {/* Live region for errors */}
+        <div id="live-region" class="sr-live" aria-live="polite"></div>
       </div>
     </>
   );

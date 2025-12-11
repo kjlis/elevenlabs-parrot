@@ -4,6 +4,7 @@ export const Config = async (c: Context) => {
   const anamApiKey = c.env.ANAM_API_KEY;
   const avatarId = c.env.ANAM_AVATAR_ID;
   const elevenLabsAgentId = c.env.ELEVENLABS_AGENT_ID;
+  const elevenLabsApiKey = c.env.ELEVENLABS_API_KEY;
 
   if (!anamApiKey || !avatarId || !elevenLabsAgentId) {
     return c.json(
@@ -40,6 +41,7 @@ export const Config = async (c: Context) => {
     return c.json({
       anamSessionToken: data.sessionToken,
       elevenLabsAgentId: elevenLabsAgentId,
+      elevenLabsApiKey,
     });
   } catch (error) {
     console.error("Config error:", error);
