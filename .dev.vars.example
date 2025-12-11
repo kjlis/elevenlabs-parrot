@@ -5,5 +5,9 @@ ELEVENLABS_AGENT_ID=your_elevenlabs_agent_id_here
 # REPORT_SOURCE_URL=https://example.com/coderabbit-summary.json
 # Optional: Convex for reports + transcripts
 # CONVEX_URL=https://your-deployment.convex.cloud
+# Or local dev server
+# VITE_CONVEX_URL=http://127.0.0.1:3210
 # CONVEX_ADMIN_KEY=your_convex_admin_key
+CONVEX_DEPLOYMENT=local:local-krzysztof_zablocki-parrot_fbd08
+VITE_CONVEX_URL=http://127.0.0.1:3210
 # REPORT_PROJECT_ID=parrot/demo

@@ -13,10 +13,11 @@ async function fetchFromConvex(
   c: Context,
   projectId: string
 ): Promise<Response | null> {
-  if (!c.env.CONVEX_URL) return null;
+  const convexUrl = c.env.CONVEX_URL || c.env.VITE_CONVEX_URL;
+  if (!convexUrl) return null;
 
   try {
-    const res = await fetch(`${c.env.CONVEX_URL}/api/query`, {
+    const res = await fetch(`${convexUrl}/api/query`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

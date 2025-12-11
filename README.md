@@ -86,6 +86,7 @@ ELEVENLABS_AGENT_ID=your_agent_id
 # REPORT_SOURCE_URL=https://your-hosted-coderabbit-summary.json
 # Optional: Convex for live reports + transcripts
 # CONVEX_URL=https://<deployment>.convex.cloud
+# VITE_CONVEX_URL=http://127.0.0.1:3210 # local dev
 # CONVEX_ADMIN_KEY=<convex_admin_key>
 # REPORT_PROJECT_ID=your-default-project-id
 ```
@@ -190,6 +191,7 @@ persistTranscript(role, text);
 | `ELEVENLABS_AGENT_ID` | ElevenLabs Agent ID | [elevenlabs.io](https://elevenlabs.io) → Agents |
 | `REPORT_SOURCE_URL` | (Optional) URL to latest CodeRabbit summary JSON | Any reachable URL returning the report shape |
 | `CONVEX_URL` | (Optional) Convex deployment URL | Convex dashboard |
+| `VITE_CONVEX_URL` | (Optional) Local Convex dev URL (fallback) | `convex dev` default http://127.0.0.1:3210 |
 | `CONVEX_ADMIN_KEY` | (Optional) Server auth for Convex queries/mutations | Convex dashboard |
 | `REPORT_PROJECT_ID` | (Optional) Default project id for report/transcript calls | Your chosen project id |
 

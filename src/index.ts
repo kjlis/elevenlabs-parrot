@@ -10,6 +10,7 @@ type Bindings = {
   ANAM_AVATAR_ID: string;
   ELEVENLABS_AGENT_ID: string;
   CONVEX_URL?: string;
+  VITE_CONVEX_URL?: string;
   CONVEX_ADMIN_KEY?: string;
   REPORT_PROJECT_ID?: string;
   REPORT_SOURCE_URL?: string;

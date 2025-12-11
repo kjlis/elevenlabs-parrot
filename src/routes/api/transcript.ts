@@ -8,7 +8,8 @@ type TranscriptPayload = {
 };
 
 export const Transcript = async (c: Context) => {
-  if (!c.env.CONVEX_URL) {
+  const convexUrl = c.env.CONVEX_URL || c.env.VITE_CONVEX_URL;
+  if (!convexUrl) {
     return c.json(
       { error: "Convex not configured (set CONVEX_URL and CONVEX_ADMIN_KEY)" },
       501
@@ -33,7 +34,7 @@ export const Transcript = async (c: Context) => {
   }
 
   try {
-    const res = await fetch(`${c.env.CONVEX_URL}/api/mutation`, {
+    const res = await fetch(`${convexUrl}/api/mutation`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
