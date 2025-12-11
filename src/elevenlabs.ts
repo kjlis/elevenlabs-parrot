@@ -64,7 +64,8 @@ async function setupMicrophone() {
  */
 export async function connectElevenLabs(
   agentId: string,
-  callbacks: ElevenLabsCallbacks
+  callbacks: ElevenLabsCallbacks,
+  contextText?: string
 ) {
   websocket = new WebSocket(
     `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`
@@ -74,6 +75,15 @@ export async function connectElevenLabs(
     console.log("[11Labs] WebSocket connected");
     audioChunkCount = 0;
     await setupMicrophone();
+    if (contextText) {
+      websocket?.send(
+        JSON.stringify({ type: "contextual_update", text: contextText })
+      );
+      console.log(
+        "[11Labs] Sent contextual_update (chars):",
+        contextText.length
+      );
+    }
     callbacks.onReady?.();
   };
 

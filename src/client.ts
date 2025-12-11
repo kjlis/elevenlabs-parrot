@@ -14,10 +14,19 @@ import { connectElevenLabs, stopElevenLabs } from "./elevenlabs";
 
 let isConnected = false;
 let anamClient: AnamClient | null = null;
+let cachedReport: Report | null = null;
 
 interface Config {
   anamSessionToken: string;
   elevenLabsAgentId: string;
+}
+
+interface Report {
+  projectId: string;
+  projectName: string;
+  from: string;
+  to: string;
+  summary: string;
 }
 
 // ============================================================================
@@ -33,6 +42,8 @@ const anamVideo = $("anam-video") as HTMLVideoElement;
 const avatarPlaceholder = $("avatar-placeholder") as HTMLDivElement;
 const errorContainer = $("error-container") as HTMLDivElement;
 const errorText = $("error-text") as HTMLParagraphElement;
+const reportCard = $("report-card") as HTMLDivElement | null;
+const reportBody = $("report-body") as HTMLDivElement | null;
 
 // ============================================================================
 // UI HELPERS
@@ -82,6 +93,70 @@ function showError(message: string) {
   setTimeout(() => errorContainer.classList.add("hidden"), 5000);
 }
 
+function renderReport(report?: Report) {
+  if (!reportCard || !reportBody) return;
+  if (!report) {
+    reportBody.innerHTML =
+      '<p class="text-zinc-500">No report available. Provide public/report.json or set REPORT_SOURCE_URL.</p>';
+    return;
+  }
+
+  reportBody.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className =
+    "flex items-center justify-between text-xs text-zinc-500 mb-2";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = report.projectName;
+
+  const windowSpan = document.createElement("span");
+  windowSpan.textContent = `${report.from} → ${report.to}`;
+
+  header.appendChild(nameSpan);
+  header.appendChild(windowSpan);
+
+  const pre = document.createElement("pre");
+  pre.className = "whitespace-pre-wrap text-sm text-zinc-100";
+  pre.textContent = report.summary;
+
+  reportBody.appendChild(header);
+  reportBody.appendChild(pre);
+}
+
+function buildContextText(report?: Report) {
+  if (!report) return "";
+  return [
+    "CodeRabbit project report:",
+    `Project: ${report.projectName}`,
+    `Window: ${report.from} → ${report.to}`,
+    "",
+    report.summary,
+  ].join("\n");
+}
+
+async function fetchConfig(): Promise<Config> {
+  const res = await fetch("/api/config");
+  if (!res.ok) throw new Error("Failed to load config");
+  return res.json();
+}
+
+async function fetchReport(): Promise<Report | null> {
+  const res = await fetch("/api/report");
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function loadReport() {
+  try {
+    cachedReport = await fetchReport();
+    renderReport(cachedReport || undefined);
+  } catch (error) {
+    console.error("Report load error:", error);
+    renderReport(undefined);
+  }
+}
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -91,9 +166,13 @@ async function start() {
   btnText.textContent = "Connecting...";
 
   try {
-    // Fetch config from server
-    const res = await fetch("/api/config");
-    const config: Config = await res.json();
+    // Fetch config + report in parallel
+    const [config, report] = await Promise.all([
+      fetchConfig(),
+      cachedReport ? Promise.resolve(cachedReport) : fetchReport(),
+    ]);
+    cachedReport = report;
+    renderReport(report || undefined);
 
     // Initialize Anam avatar with the audio stream
     console.log("[Anam] Creating client...");
@@ -134,7 +213,8 @@ async function start() {
       },
       onDisconnect: () => setConnected(false),
       onError: () => showError("Connection error"),
-    });
+    },
+    buildContextText(report || undefined));
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to start");
     btnText.textContent = "Start Conversation";
@@ -155,6 +235,9 @@ async function stop() {
 // ============================================================================
 // EVENT LISTENERS
 // ============================================================================
+
+// Load report summary on page load
+void loadReport();
 
 connectBtn.addEventListener("click", () => {
   isConnected ? stop() : start();

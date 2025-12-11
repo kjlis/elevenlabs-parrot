@@ -1,0 +1,10 @@
+{
+  "projectId": "example/repo",
+  "projectName": "Parrot Demo",
+  "from": "2025-01-10",
+  "to": "2025-01-11",
+  "summary": "### Merged\n- Add Anam + ElevenLabs demo skeleton\n- Improve WebSocket logging\n\n### Open Risks\n- No persistence for transcripts\n- No multi-project switcher yet\n\n### Next Up\n- Inject CodeRabbit context into ElevenLabs using contextual_update\n- Add report source selector",
+  "raw": {
+    "note": "Replace this file or set REPORT_SOURCE_URL in env for real data"
+  }
+}

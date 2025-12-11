@@ -109,6 +109,17 @@ export const Index = (c: Context) => {
 
           {/* Controls card */}
           <div class="bg-zinc-900/80 backdrop-blur-sm border border-zinc-800 rounded-xl p-6 space-y-5">
+            {/* Report summary */}
+            <div id="report-card" class="bg-zinc-800/40 border border-zinc-800 rounded-lg p-4 space-y-2">
+              <div class="flex items-center justify-between text-xs text-zinc-400 uppercase tracking-wider">
+                <span>Latest Report</span>
+                <span class="text-[10px] text-zinc-500">CodeRabbit</span>
+              </div>
+              <div id="report-body" class="text-sm text-zinc-200 whitespace-pre-wrap">
+                Loading report...
+              </div>
+            </div>
+
             {/* Connect button */}
             <button
               id="connect-btn"
