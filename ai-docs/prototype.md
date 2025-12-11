@@ -174,6 +174,7 @@ Keep fields small (summary ≤ 8k chars) because we send them over WebSocket as 
 - README and `.dev.vars.example` updated with Convex envs and report flow.
 - Sample `public/report.json` included for offline demos.
 - Convex schema + functions (`storeReport`, `getLatestReport`, `appendTranscript`, `listTranscript`) added; local Convex deployment seeded successfully.
+- Added `PROFILES_JSON`-driven multi-agent selection (agent/avatar pairs), context simplified to report-only, transcripts tagged/indexed by `agentId`.
 
 **Remaining**
 - Create Convex deployment and implement functions (`parrot:storeReport`, `parrot:getLatestReport`, `parrot:appendTranscript`) per spec.
