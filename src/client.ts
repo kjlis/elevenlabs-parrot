@@ -457,6 +457,7 @@ async function stop() {
 
 // Load report summary on page load
 void loadReport();
+void preloadConfig();
 
 connectBtn.addEventListener("click", () => {
   isConnected ? stop() : start();
@@ -492,5 +493,15 @@ profileSelect?.addEventListener("change", () => {
   window.history.replaceState({}, "", url.toString());
   void fetchTranscriptList();
 });
+
+async function preloadConfig() {
+  try {
+    await fetchConfig();
+  } catch (error) {
+    console.warn("Config preload failed:", error);
+  }
+}
+
+void preloadConfig();
 
 console.log("ElevenLabs + Anam Demo ready");
