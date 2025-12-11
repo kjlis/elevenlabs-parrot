@@ -59,10 +59,13 @@ const conversationIdLabel = $("conversation-id") as HTMLSpanElement | null;
 const transcriptList = $("transcript-list") as HTMLSelectElement | null;
 const refreshSpinner = $("refresh-spinner") as HTMLSpanElement | null;
 
-// initialize project from URL or select default
+// initialize project from URL, localStorage, or default
 const urlProject = new URLSearchParams(window.location.search).get("projectId");
+const storedProject = localStorage.getItem("parrot:projectId");
 if (urlProject) {
   currentProjectId = urlProject;
+} else if (storedProject) {
+  currentProjectId = storedProject;
 }
 if (projectSelect) {
   projectSelect.value = currentProjectId;
@@ -399,6 +402,7 @@ projectSelect?.addEventListener("change", () => {
   const url = new URL(window.location.href);
   url.searchParams.set("projectId", currentProjectId);
   window.history.replaceState({}, "", url.toString());
+  localStorage.setItem("parrot:projectId", currentProjectId);
   void loadReport(true);
   void fetchTranscriptList();
 });
