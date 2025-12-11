@@ -486,12 +486,28 @@ transcriptList?.addEventListener("change", () => {
 });
 
 profileSelect?.addEventListener("change", () => {
-  currentProfileId = profileSelect.value;
+  const newProfile = profileSelect.value;
+  const wasConnected = isConnected;
+
+  currentProfileId = newProfile;
   localStorage.setItem("parrot:profileId", currentProfileId);
+
   const url = new URL(window.location.href);
   url.searchParams.set("profileId", currentProfileId);
   window.history.replaceState({}, "", url.toString());
-  void fetchTranscriptList();
+
+  const action = async () => {
+    if (wasConnected) {
+      await stop();
+      await start();
+    } else {
+      await loadReport(true);
+      await fetchTranscriptList();
+      updateSpeakingAs();
+    }
+  };
+
+  void action();
 });
 
 async function preloadConfig() {
