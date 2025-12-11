@@ -6,6 +6,8 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 # PROFILES_JSON=[{"id":"default","label":"Alice","elevenLabsAgentId":"agent_default","anamAvatarId":"avatar_default"},{"id":"bob","label":"Bob","elevenLabsAgentId":"agent_bob","anamAvatarId":"avatar_bob"}]
 # Optional: point to hosted CodeRabbit summary JSON (falls back to public/report.json)
 # REPORT_SOURCE_URL=https://example.com/coderabbit-summary.json
+# Optional: CodeRabbit API key for on-demand report generation
+# CODERABBIT_API_KEY=cr-xxxxxxxxxxxxx
 # Optional: Convex for reports + transcripts
 # CONVEX_URL=https://your-deployment.convex.cloud
 # Or local dev server

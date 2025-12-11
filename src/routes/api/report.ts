@@ -44,19 +44,130 @@ async function fetchFromConvex(
   }
 }
 
+async function generateFromCodeRabbit(
+  c: Context
+): Promise<{ raw: any[]; from: string; to: string } | null> {
+  const apiKey = c.env.CODERABBIT_API_KEY;
+  if (!apiKey) return null;
+
+  // Last 24 hours
+  const to = new Date().toISOString().split("T")[0];
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+
+  try {
+    const res = await fetch("https://api.coderabbit.ai/api/v1/report.generate", {
+      method: "POST",
+      headers: {
+        "x-coderabbitai-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to }),
+    });
+
+    if (!res.ok) {
+      console.error("CodeRabbit API failed:", res.status, res.statusText);
+      return null;
+    }
+
+    const raw = await res.json();
+    return { raw, from, to };
+  } catch (error) {
+    console.error("CodeRabbit API error:", error);
+    return null;
+  }
+}
+
+async function storeToConvex(
+  c: Context,
+  projectId: string,
+  from: string,
+  to: string,
+  raw: any[]
+): Promise<void> {
+  const convexUrl = c.env.CONVEX_URL || c.env.VITE_CONVEX_URL;
+  if (!convexUrl) return;
+
+  try {
+    await fetch(`${convexUrl}/api/mutation`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(c.env.CONVEX_ADMIN_KEY
+          ? { Authorization: `Bearer ${c.env.CONVEX_ADMIN_KEY}` }
+          : {}),
+      },
+      body: JSON.stringify({
+        path: "parrot:storeReport",
+        args: {
+          projectId,
+          projectName: projectId,
+          from,
+          to,
+          raw,
+        },
+        format: "json",
+      }),
+    });
+  } catch (error) {
+    console.error("Convex store error:", error);
+  }
+}
+
 /**
  * Returns the latest CodeRabbit report.
  *
+ * If generate=true is passed, fetches fresh report from CodeRabbit API
+ * and stores it in Convex before returning.
+ *
  * Source priority:
- * 1) Convex query (if CONVEX_URL is configured)
- * 2) REPORT_SOURCE_URL env (any reachable JSON endpoint)
- * 3) Static asset at /report.json (served from public/)
- * 4) Inline fallback sample
+ * 1) generate=true: CodeRabbit API → store in Convex → return
+ * 2) Convex query (if CONVEX_URL is configured)
+ * 3) REPORT_SOURCE_URL env (any reachable JSON endpoint)
+ * 4) Static asset at /report.json (served from public/)
+ * 5) Inline fallback sample
  */
 export const Report = async (c: Context) => {
   const projectId =
     c.req.query("projectId") || c.env.REPORT_PROJECT_ID || "default-project";
   const profileId = c.req.query("profileId");
+  const shouldGenerate = c.req.query("generate") === "true";
+
+  // Generate fresh report from CodeRabbit API if requested
+  if (shouldGenerate) {
+    const generated = await generateFromCodeRabbit(c);
+    if (generated) {
+      const { raw, from, to } = generated;
+
+      // Store in Convex
+      await storeToConvex(c, projectId, from, to, raw);
+
+      // Build summary from raw response
+      const summary = (raw ?? [])
+        .map(
+          (g: any) =>
+            "### " +
+            (g?.group ?? "Update") +
+            "\n" +
+            (g?.report ?? JSON.stringify(g ?? {}, null, 2))
+        )
+        .join("\n\n")
+        .slice(0, 8000);
+
+      return c.json({
+        projectId,
+        projectName: projectId,
+        from,
+        to,
+        summary,
+        generatedAt: Date.now(),
+        source: "coderabbit",
+      });
+    }
+    // If generation failed, fall through to other sources
+    console.warn("CodeRabbit generation failed, falling back to cached data");
+  }
 
   // Try Convex first
   const convexRes = await fetchFromConvex(c, projectId);
