@@ -90,6 +90,8 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key
 # VITE_CONVEX_URL=http://127.0.0.1:3210 # local dev
 # CONVEX_ADMIN_KEY=<convex_admin_key>
 # REPORT_PROJECT_ID=your-default-project-id
+# Optional: multiple voice/avatars
+# PROFILES_JSON=[{"id":"default","label":"Alice","elevenLabsAgentId":"agent_default","anamAvatarId":"avatar_default"},{"id":"bob","label":"Bob","elevenLabsAgentId":"agent_bob","anamAvatarId":"avatar_bob"}]
 ```
 
 ### 3. Provide a report
@@ -207,6 +209,7 @@ persistTranscript(role, text);
 | `VITE_CONVEX_URL` | (Optional) Local Convex dev URL (fallback) | `convex dev` default http://127.0.0.1:3210 |
 | `CONVEX_ADMIN_KEY` | (Optional) Server auth for Convex queries/mutations | Convex dashboard |
 | `REPORT_PROJECT_ID` | (Optional) Default project id for report/transcript calls | Your chosen project id |
+| `PROFILES_JSON` | (Optional) JSON array of profile objects `{id,label,elevenLabsAgentId,anamAvatarId}` | Local env/Cloudflare secret |
 
 ## ElevenLabs Agent Configuration
 

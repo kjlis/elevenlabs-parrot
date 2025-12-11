@@ -15,6 +15,7 @@ type Bindings = {
   CONVEX_ADMIN_KEY?: string;
   REPORT_PROJECT_ID?: string;
   REPORT_SOURCE_URL?: string;
+  PROFILES_JSON?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();

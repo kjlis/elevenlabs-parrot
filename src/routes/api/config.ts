@@ -5,8 +5,6 @@ type Profile = {
   label: string;
   elevenLabsAgentId: string;
   anamAvatarId: string;
-  displayName?: string;
-  githubUser?: string;
 };
 
 export const Config = async (c: Context) => {
@@ -14,6 +12,7 @@ export const Config = async (c: Context) => {
   const avatarId = c.env.ANAM_AVATAR_ID;
   const elevenLabsAgentId = c.env.ELEVENLABS_AGENT_ID;
   const elevenLabsApiKey = c.env.ELEVENLABS_API_KEY;
+  const profilesJson = c.env.PROFILES_JSON;
 
   if (!anamApiKey || !avatarId || !elevenLabsAgentId) {
     return c.json(
@@ -26,15 +25,33 @@ export const Config = async (c: Context) => {
   }
 
   const profileId = c.req.query("profileId") || "default";
-  const profiles: Profile[] = [
-    {
+  let profiles: Profile[] = [];
+
+  if (profilesJson) {
+    try {
+      const parsed = JSON.parse(profilesJson);
+      if (Array.isArray(parsed)) {
+        profiles = parsed.filter(
+          (p) =>
+            p &&
+            typeof p.id === "string" &&
+            typeof p.elevenLabsAgentId === "string" &&
+            typeof p.anamAvatarId === "string"
+        );
+      }
+    } catch (err) {
+      console.error("Failed to parse PROFILES_JSON", err);
+    }
+  }
+
+  if (!profiles.length) {
+    profiles.push({
       id: "default",
       label: "Default",
       elevenLabsAgentId,
       anamAvatarId: avatarId,
-      displayName: "Default",
-    },
-  ];
+    });
+  }
 
   const selected = profiles.find((p) => p.id === profileId) || profiles[0];
 

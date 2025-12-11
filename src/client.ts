@@ -93,6 +93,17 @@ if (profileSelect) {
   profileSelect.value = currentProfileId;
 }
 
+function currentProfile(): Profile | undefined {
+  return (
+    profiles.find((p) => p.id === currentProfileId) ||
+    profiles.find((p) => p.id === "default")
+  );
+}
+
+function currentAgentId(): string {
+  return currentProfile()?.elevenLabsAgentId || "";
+}
+
 // ============================================================================
 // UI HELPERS
 // ============================================================================
@@ -208,6 +219,7 @@ async function fetchConfig(): Promise<Config> {
   const cfg: Config = await res.json();
 
   if (cfg.profiles && profileSelect) {
+    profiles = cfg.profiles;
     profileSelect.innerHTML = "";
     cfg.profiles.forEach((p) => {
       const opt = document.createElement("option");
@@ -242,6 +254,7 @@ async function persistTranscript(
 ) {
   if (!conversationId) return;
   const projectId = currentProjectId || cachedReport?.projectId || "default-project";
+  const agentId = currentAgentId();
   try {
     await fetch("/api/transcript", {
       method: "POST",
@@ -251,6 +264,7 @@ async function persistTranscript(
         conversationId,
         role,
         text,
+        agentId,
       }),
     });
   } catch (error) {
@@ -320,7 +334,7 @@ async function fetchTranscriptList() {
     const res = await fetch(
       `/api/transcript?projectId=${encodeURIComponent(
         currentProjectId
-      )}&limit=10`
+      )}&limit=10&agentId=${encodeURIComponent(currentAgentId())}`
     );
     if (!res.ok) return;
     const data = await res.json();
@@ -382,7 +396,7 @@ async function start() {
 
     // Connect to ElevenLabs
     await connectElevenLabs(
-      config.elevenLabsAgentId,
+      currentAgentId(),
       {
         onReady: () => {
           setConnected(true);
@@ -461,6 +475,15 @@ transcriptList?.addEventListener("change", () => {
   conversationId = selected;
   if (conversationIdLabel) conversationIdLabel.textContent = conversationId;
   void fetchTranscriptHistory();
+});
+
+profileSelect?.addEventListener("change", () => {
+  currentProfileId = profileSelect.value;
+  localStorage.setItem("parrot:profileId", currentProfileId);
+  const url = new URL(window.location.href);
+  url.searchParams.set("profileId", currentProfileId);
+  window.history.replaceState({}, "", url.toString());
+  void fetchTranscriptList();
 });
 
 console.log("ElevenLabs + Anam Demo ready");
