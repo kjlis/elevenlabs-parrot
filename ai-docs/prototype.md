@@ -162,3 +162,20 @@ Keep fields small (summary ≤ 8k chars) because we send them over WebSocket as 
 - `public/report.json` exists **or** `REPORT_SOURCE_URL` is set.
 - `bun run dev` → open `http://localhost:5173`, click **Start Conversation**.
 - Agent answers using report details; transcript shows both sides; avatar lip-syncs. 
+
+---
+
+## 8) Status (Dec 11, 2025)
+
+**Done**
+- Added `/api/report` with priority: Convex → external URL → static `public/report.json` → inline fallback.
+- Added `/api/transcript` that forwards turns to `parrot:appendTranscript` on Convex.
+- Client now fetches report on load, renders summary panel, sends `contextual_update` with report text, and persists transcript turns (when Convex configured).
+- README and `.dev.vars.example` updated with Convex envs and report flow.
+- Sample `public/report.json` included for offline demos.
+
+**Remaining**
+- Create Convex deployment and implement functions (`parrot:storeReport`, `parrot:getLatestReport`, `parrot:appendTranscript`) per spec.
+- Point n8n/CodeRabbit workflow to Convex `storeReport`.
+- Optional: project selector + pass `projectId` to `/api/report` and transcript writes.
+- Optional: transcript retrieval endpoint/UI to view past conversations.
