@@ -96,13 +96,21 @@ ELEVENLABS_AGENT_ID=your_agent_id
 - Easiest: edit `public/report.json` (sample provided) with your CodeRabbit summary, or
 - Host the JSON elsewhere and set `REPORT_SOURCE_URL` to that URL.
 
-### 4. Run the development server
+### 4. Run local Convex (optional but recommended)
+
+If you want live reports/transcripts instead of the static sample:
+```bash
+bunx convex dev   # or npx convex dev
+```
+This starts Convex at `http://127.0.0.1:3210` (matches `VITE_CONVEX_URL`).
+
+### 5. Run the development server
 
 ```bash
 bun run dev
 ```
 
-### 5. Open in browser
+### 6. Open in browser
 
 Navigate to `http://localhost:5173` and click **Start Conversation**.
 
@@ -122,6 +130,9 @@ src/
         └── transcript.ts # Persists transcript turns to Convex
 public/
 └── report.json        # Local fallback CodeRabbit summary
+convex/
+├── schema.ts          # Convex data model (reports, transcripts)
+└── parrot.ts          # Convex functions (storeReport, getLatestReport, appendTranscript, listTranscript)
 ```
 
 ## Architecture Details
