@@ -395,7 +395,7 @@ async function start() {
     );
     showVideo(true);
 
-    const agentAudioInputStream = anamClient.createAgentAudioInputStream({
+    const audioPassthroughStream = anamClient.createAudioPassthroughStream({
       encoding: "pcm_s16le",
       sampleRate: 16000,
       channels: 1,
@@ -410,17 +410,17 @@ async function start() {
           addMessage("system", "Connected. Start speaking...");
         },
         onAudio: (audio) => {
-          agentAudioInputStream.sendAudioChunk(audio);
+          audioPassthroughStream.sendAudioChunk(audio);
         },
         onUserTranscript: (text) => addMessage("user", text),
         onAgentResponse: (text) => {
-          agentAudioInputStream.endSequence();
+          audioPassthroughStream.endOfSpeech();
           addMessage("agent", text);
         },
         onInterrupt: () => {
           addMessage("agent", "Interrupted");
           anamClient?.interruptPersona();
-          agentAudioInputStream.endSequence();
+          audioPassthroughStream.endOfSpeech();
         },
         onDisconnect: () => setConnected(false),
         onError: () => showError("Connection error"),
