@@ -8,6 +8,16 @@ export const storeReport = mutation({
     from: v.string(),
     to: v.string(),
     raw: v.any(),
+    engineers: v.optional(
+      v.array(
+        v.object({
+          displayName: v.string(),
+          githubUser: v.optional(v.string()),
+          avatarId: v.optional(v.string()),
+          agentId: v.optional(v.string()),
+        })
+      )
+    ),
   },
   handler(ctx, args) {
     const summary = (args.raw ?? [])
@@ -26,12 +36,13 @@ export const storeReport = mutation({
       summary,
       generatedAt: Date.now(),
       source: "coderabbit",
+      engineers: args.engineers,
     });
   },
 });
 
 export const getLatestReport = query({
-  args: { projectId: v.string() },
+  args: { projectId: v.string(), profileId: v.optional(v.string()) },
   handler(ctx, { projectId }) {
     return ctx.db
       .query("reports")

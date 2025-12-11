@@ -11,7 +11,8 @@ const FALLBACK_REPORT = {
 
 async function fetchFromConvex(
   c: Context,
-  projectId: string
+  projectId: string,
+  profileId?: string
 ): Promise<Response | null> {
   const convexUrl = c.env.CONVEX_URL || c.env.VITE_CONVEX_URL;
   if (!convexUrl) return null;
@@ -27,7 +28,7 @@ async function fetchFromConvex(
       },
       body: JSON.stringify({
         path: "parrot:getLatestReport",
-        args: { projectId },
+        args: { projectId, profileId },
         format: "json",
       }),
     });
@@ -55,6 +56,7 @@ async function fetchFromConvex(
 export const Report = async (c: Context) => {
   const projectId =
     c.req.query("projectId") || c.env.REPORT_PROJECT_ID || "default-project";
+  const profileId = c.req.query("profileId");
 
   // Try Convex first
   const convexRes = await fetchFromConvex(c, projectId);

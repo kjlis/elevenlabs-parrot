@@ -18,11 +18,14 @@ let cachedReport: Report | null = null;
 let conversationId: string | null = null;
 let currentProjectId = "parrot/demo";
 let isRefreshing = false;
+let currentProfileId = "default";
 
 interface Config {
   anamSessionToken: string;
   elevenLabsAgentId: string;
   elevenLabsApiKey?: string;
+  profiles?: Profile[];
+  activeProfileId?: string;
 }
 
 interface Report {
@@ -33,6 +36,23 @@ interface Report {
   summary: string;
   generatedAt?: number;
   source?: string;
+  engineers?: Engineer[];
+}
+
+interface Engineer {
+  displayName: string;
+  githubUser?: string;
+  avatarId?: string;
+  agentId?: string;
+}
+
+interface Profile {
+  id: string;
+  label: string;
+  elevenLabsAgentId: string;
+  anamAvatarId: string;
+  displayName?: string;
+  githubUser?: string;
 }
 
 // ============================================================================
@@ -58,6 +78,8 @@ const loadTranscriptBtn = $("load-transcript") as HTMLButtonElement | null;
 const conversationIdLabel = $("conversation-id") as HTMLSpanElement | null;
 const transcriptList = $("transcript-list") as HTMLSelectElement | null;
 const refreshSpinner = $("refresh-spinner") as HTMLSpanElement | null;
+const profileSelect = document.getElementById("profile-select") as HTMLSelectElement | null;
+const speakingAs = document.getElementById("speaking-as") as HTMLDivElement | null;
 
 // initialize project from URL, localStorage, or default
 const urlProject = new URLSearchParams(window.location.search).get("projectId");
@@ -69,6 +91,15 @@ if (urlProject) {
 }
 if (projectSelect) {
   projectSelect.value = currentProjectId;
+}
+
+// profile init
+const urlProfile = new URLSearchParams(window.location.search).get("profileId");
+const storedProfile = localStorage.getItem("parrot:profileId");
+if (urlProfile) currentProfileId = urlProfile;
+else if (storedProfile) currentProfileId = storedProfile;
+if (profileSelect) {
+  profileSelect.value = currentProfileId;
 }
 
 // ============================================================================
@@ -130,6 +161,7 @@ function renderReport(report?: Report) {
     reportBody.innerHTML =
       '<p class="text-zinc-500">No report available. Provide public/report.json or set REPORT_SOURCE_URL.</p>';
     if (reportMeta) reportMeta.textContent = "";
+    if (speakingAs) speakingAs.textContent = "";
     return;
   }
 
@@ -163,28 +195,94 @@ function renderReport(report?: Report) {
     const source = report.source || "unknown";
     reportMeta.textContent = `Updated: ${date} • Source: ${source}`;
   }
+
+  updateSpeakingAs(undefined, report);
 }
 
 function buildContextText(report?: Report) {
   if (!report) return "";
+
+  const engineer = getActiveEngineer(report);
+  const persona = engineer
+    ? [
+        `Engineer: ${engineer.displayName}`,
+        engineer.githubUser ? `GitHub: @${engineer.githubUser}` : null,
+        engineer.agentId ? `AgentId: ${engineer.agentId}` : null,
+      ]
+        .filter(Boolean)
+        .join(" • ")
+    : null;
+
   return [
     "CodeRabbit project report:",
     `Project: ${report.projectName}`,
     `Window: ${report.from} → ${report.to}`,
-    "",
+    persona ? persona : "",
     report.summary,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function getActiveEngineer(report?: Report): Engineer | undefined {
+  if (!report || !report.engineers) return undefined;
+  return report.engineers.find(
+    (e) =>
+      e.agentId === currentProfileId ||
+      e.avatarId === currentProfileId ||
+      e.githubUser === currentProfileId
+  );
+}
+
+function updateSpeakingAs(config?: Config, report?: Report) {
+  if (!speakingAs) return;
+  const engineer = getActiveEngineer(report);
+  const profiles = config?.profiles;
+  const activeProfile =
+    profiles?.find((p) => p.id === currentProfileId) ||
+    profiles?.find((p) => p.id === config?.activeProfileId || "default");
+
+  const parts: string[] = [];
+  if (engineer) {
+    parts.push(engineer.displayName);
+    if (engineer.githubUser) parts.push(`@${engineer.githubUser}`);
+  } else if (activeProfile) {
+    parts.push(activeProfile.label || activeProfile.id);
+    if (activeProfile.githubUser) parts.push(`@${activeProfile.githubUser}`);
+  }
+
+  speakingAs.textContent = parts.length ? `Speaking as: ${parts.join(" • ")}` : "";
 }
 
 async function fetchConfig(): Promise<Config> {
   const res = await fetch("/api/config");
   if (!res.ok) throw new Error("Failed to load config");
-  return res.json();
+  const cfg: Config = await res.json();
+
+  if (cfg.profiles && profileSelect) {
+    profileSelect.innerHTML = "";
+    cfg.profiles.forEach((p) => {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.label || p.id;
+      profileSelect.appendChild(opt);
+    });
+    const exists = cfg.profiles.some((p) => p.id === currentProfileId);
+    if (!exists && cfg.activeProfileId) {
+      currentProfileId = cfg.activeProfileId;
+    }
+    profileSelect.value = currentProfileId;
+    updateSpeakingAs(cfg, cachedReport || undefined);
+  }
+
+  return cfg;
 }
 
 async function fetchReport(): Promise<Report | null> {
   const res = await fetch(
-    `/api/report?projectId=${encodeURIComponent(currentProjectId)}`
+    `/api/report?projectId=${encodeURIComponent(
+      currentProjectId
+    )}&profileId=${encodeURIComponent(currentProfileId)}`
   );
   if (!res.ok) return null;
   return res.json();

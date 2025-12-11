@@ -1,5 +1,14 @@
 import { Context } from "hono";
 
+type Profile = {
+  id: string;
+  label: string;
+  elevenLabsAgentId: string;
+  anamAvatarId: string;
+  displayName?: string;
+  githubUser?: string;
+};
+
 export const Config = async (c: Context) => {
   const anamApiKey = c.env.ANAM_API_KEY;
   const avatarId = c.env.ANAM_AVATAR_ID;
@@ -16,6 +25,19 @@ export const Config = async (c: Context) => {
     );
   }
 
+  const profileId = c.req.query("profileId") || "default";
+  const profiles: Profile[] = [
+    {
+      id: "default",
+      label: "Default",
+      elevenLabsAgentId,
+      anamAvatarId: avatarId,
+      displayName: "Default",
+    },
+  ];
+
+  const selected = profiles.find((p) => p.id === profileId) || profiles[0];
+
   try {
     const response = await fetch("https://api.anam.ai/v1/auth/session-token", {
       method: "POST",
@@ -25,7 +47,7 @@ export const Config = async (c: Context) => {
       },
       body: JSON.stringify({
         personaConfig: {
-          avatarId: avatarId,
+          avatarId: selected.anamAvatarId,
           enableAudioPassthrough: true,
         },
       }),
@@ -40,8 +62,10 @@ export const Config = async (c: Context) => {
     const data = await response.json();
     return c.json({
       anamSessionToken: data.sessionToken,
-      elevenLabsAgentId: elevenLabsAgentId,
+      elevenLabsAgentId: selected.elevenLabsAgentId,
       elevenLabsApiKey,
+      profiles,
+      activeProfileId: selected.id,
     });
   } catch (error) {
     console.error("Config error:", error);

@@ -11,6 +11,16 @@ export default defineSchema({
     summary: v.string(),
     raw: v.any(),
     source: v.literal("coderabbit"),
+    engineers: v.optional(
+      v.array(
+        v.object({
+          displayName: v.string(),
+          githubUser: v.optional(v.string()),
+          avatarId: v.optional(v.string()),
+          agentId: v.optional(v.string()),
+        })
+      )
+    ),
   }).index("project", ["projectId", "generatedAt"]),
 
   transcripts: defineTable({

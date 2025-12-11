@@ -123,6 +123,12 @@ export const Index = (c: Context) => {
                   <option value="default-project">default-project</option>
                   <option value="example/repo">example/repo</option>
                 </select>
+                <select
+                  id="profile-select"
+                  class="bg-zinc-800/60 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-labs-500"
+                >
+                  <option value="default">Default</option>
+                </select>
                 <button
                   id="refresh-report"
                   class="px-3 py-2 text-xs font-medium rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-200 hover:bg-zinc-700 transition-colors flex items-center gap-2"
@@ -140,6 +146,7 @@ export const Index = (c: Context) => {
                 <span class="text-[10px] text-zinc-500">CodeRabbit</span>
               </div>
               <div class="text-xs text-zinc-500" id="report-meta">Loading...</div>
+              <div class="text-xs text-zinc-500" id="speaking-as"></div>
               <div id="report-body" class="text-sm text-zinc-200 whitespace-pre-wrap">
                 Loading report...
               </div>
@@ -182,6 +189,7 @@ export const Index = (c: Context) => {
                   Transcript
                 </label>
                 <div class="flex items-center gap-3">
+                  <span class="text-[10px] text-zinc-500">Project transcripts</span>
                   <button
                     id="load-transcript"
                     class="text-xs text-zinc-300 hover:text-labs-400 transition-colors"
