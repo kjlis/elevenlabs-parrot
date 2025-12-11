@@ -8,16 +8,6 @@ export const storeReport = mutation({
     from: v.string(),
     to: v.string(),
     raw: v.any(),
-    engineers: v.optional(
-      v.array(
-        v.object({
-          displayName: v.string(),
-          githubUser: v.optional(v.string()),
-          avatarId: v.optional(v.string()),
-          agentId: v.optional(v.string()),
-        })
-      )
-    ),
   },
   handler(ctx, args) {
     const summary = (args.raw ?? [])
@@ -36,7 +26,6 @@ export const storeReport = mutation({
       summary,
       generatedAt: Date.now(),
       source: "coderabbit",
-      engineers: args.engineers,
     });
   },
 });
@@ -58,6 +47,7 @@ export const appendTranscript = mutation({
     conversationId: v.string(),
     role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
     text: v.string(),
+    agentId: v.optional(v.string()),
   },
   handler(ctx, args) {
     return ctx.db.insert("transcripts", {
@@ -82,18 +72,25 @@ export const listRecentConversations = query({
   args: {
     projectId: v.string(),
     limit: v.optional(v.number()),
+    agentId: v.optional(v.string()),
   },
-  handler(ctx, { projectId, limit }) {
-    const byProject = ctx.db
+  handler(ctx, { projectId, limit, agentId }) {
+    const baseQuery = ctx.db
       .query("transcripts")
-      .withIndex("project", (q) => q.eq("projectId", projectId))
+      .withIndex(
+        agentId ? "project_agent" : "project",
+        (q) =>
+          agentId
+            ? q.eq("projectId", projectId).eq("agentId", agentId)
+            : q.eq("projectId", projectId)
+      )
       .order("desc")
       .take(limit ?? 10);
 
     const seen = new Set<string>();
     const conversations: { conversationId: string; lastTs: number }[] = [];
 
-    for (const row of byProject) {
+    for (const row of baseQuery) {
       if (!seen.has(row.conversationId)) {
         seen.add(row.conversationId);
         conversations.push({

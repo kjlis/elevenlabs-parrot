@@ -19,6 +19,7 @@ let conversationId: string | null = null;
 let currentProjectId = "parrot/demo";
 let isRefreshing = false;
 let currentProfileId = "default";
+let profiles: Profile[] = [];
 
 interface Config {
   anamSessionToken: string;
@@ -36,14 +37,6 @@ interface Report {
   summary: string;
   generatedAt?: number;
   source?: string;
-  engineers?: Engineer[];
-}
-
-interface Engineer {
-  displayName: string;
-  githubUser?: string;
-  avatarId?: string;
-  agentId?: string;
 }
 
 interface Profile {
@@ -51,8 +44,6 @@ interface Profile {
   label: string;
   elevenLabsAgentId: string;
   anamAvatarId: string;
-  displayName?: string;
-  githubUser?: string;
 }
 
 // ============================================================================
@@ -161,7 +152,6 @@ function renderReport(report?: Report) {
     reportBody.innerHTML =
       '<p class="text-zinc-500">No report available. Provide public/report.json or set REPORT_SOURCE_URL.</p>';
     if (reportMeta) reportMeta.textContent = "";
-    if (speakingAs) speakingAs.textContent = "";
     return;
   }
 
@@ -202,56 +192,14 @@ function renderReport(report?: Report) {
 function buildContextText(report?: Report) {
   if (!report) return "";
 
-  const engineer = getActiveEngineer(report);
-  const persona = engineer
-    ? [
-        `Engineer: ${engineer.displayName}`,
-        engineer.githubUser ? `GitHub: @${engineer.githubUser}` : null,
-        engineer.agentId ? `AgentId: ${engineer.agentId}` : null,
-      ]
-        .filter(Boolean)
-        .join(" • ")
-    : null;
-
   return [
     "CodeRabbit project report:",
     `Project: ${report.projectName}`,
     `Window: ${report.from} → ${report.to}`,
-    persona ? persona : "",
     report.summary,
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-function getActiveEngineer(report?: Report): Engineer | undefined {
-  if (!report || !report.engineers) return undefined;
-  return report.engineers.find(
-    (e) =>
-      e.agentId === currentProfileId ||
-      e.avatarId === currentProfileId ||
-      e.githubUser === currentProfileId
-  );
-}
-
-function updateSpeakingAs(config?: Config, report?: Report) {
-  if (!speakingAs) return;
-  const engineer = getActiveEngineer(report);
-  const profiles = config?.profiles;
-  const activeProfile =
-    profiles?.find((p) => p.id === currentProfileId) ||
-    profiles?.find((p) => p.id === config?.activeProfileId || "default");
-
-  const parts: string[] = [];
-  if (engineer) {
-    parts.push(engineer.displayName);
-    if (engineer.githubUser) parts.push(`@${engineer.githubUser}`);
-  } else if (activeProfile) {
-    parts.push(activeProfile.label || activeProfile.id);
-    if (activeProfile.githubUser) parts.push(`@${activeProfile.githubUser}`);
-  }
-
-  speakingAs.textContent = parts.length ? `Speaking as: ${parts.join(" • ")}` : "";
 }
 
 async function fetchConfig(): Promise<Config> {

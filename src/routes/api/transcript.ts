@@ -22,6 +22,7 @@ export const Transcript = async (c: Context) => {
     const conversationId = c.req.query("conversationId");
     const projectId =
       c.req.query("projectId") || c.env.REPORT_PROJECT_ID || "default-project";
+    const agentId = c.req.query("agentId") || undefined;
     const limit = Number(c.req.query("limit") || DEFAULT_LIMIT);
 
     try {
@@ -35,11 +36,11 @@ export const Transcript = async (c: Context) => {
               : {}),
           },
           body: JSON.stringify({
-            path: "parrot:listTranscript",
-            args: { conversationId },
-            format: "json",
-          }),
-        });
+          path: "parrot:listTranscript",
+          args: { conversationId },
+          format: "json",
+        }),
+      });
         if (!res.ok) {
           const msg = await res.text();
           console.error("Convex transcript fetch error:", res.status, msg);
@@ -60,7 +61,7 @@ export const Transcript = async (c: Context) => {
         },
         body: JSON.stringify({
           path: "parrot:listRecentConversations",
-          args: { projectId, limit },
+          args: { projectId, limit, agentId },
           format: "json",
         }),
       });
@@ -90,6 +91,7 @@ export const Transcript = async (c: Context) => {
   const conversationId = body.conversationId;
   const role = body.role;
   const text = body.text;
+  const agentId = body.agentId;
 
   if (!conversationId || !role || !text) {
     return c.json({ error: "conversationId, role, and text are required" }, 400);
@@ -106,7 +108,7 @@ export const Transcript = async (c: Context) => {
       },
       body: JSON.stringify({
         path: "parrot:appendTranscript",
-        args: { projectId, conversationId, role, text },
+        args: { projectId, conversationId, role, text, agentId },
         format: "json",
       }),
     });

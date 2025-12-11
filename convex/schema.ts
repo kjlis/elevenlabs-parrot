@@ -11,16 +11,6 @@ export default defineSchema({
     summary: v.string(),
     raw: v.any(),
     source: v.literal("coderabbit"),
-    engineers: v.optional(
-      v.array(
-        v.object({
-          displayName: v.string(),
-          githubUser: v.optional(v.string()),
-          avatarId: v.optional(v.string()),
-          agentId: v.optional(v.string()),
-        })
-      )
-    ),
   }).index("project", ["projectId", "generatedAt"]),
 
   transcripts: defineTable({
@@ -29,7 +19,9 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("agent"), v.literal("system")),
     text: v.string(),
     ts: v.number(),
+    agentId: v.optional(v.string()),
   })
     .index("conversation", ["conversationId", "ts"])
-    .index("project", ["projectId", "ts"]),
+    .index("project", ["projectId", "ts"])
+    .index("project_agent", ["projectId", "agentId", "ts"]),
 });
