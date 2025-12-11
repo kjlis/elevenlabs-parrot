@@ -104,6 +104,14 @@ function currentAgentId(): string {
   return currentProfile()?.elevenLabsAgentId || "";
 }
 
+function updateSpeakingAs() {
+  if (!speakingAs) return;
+  const profile = currentProfile();
+  speakingAs.textContent = profile
+    ? `Speaking as: ${profile.label || profile.id}`
+    : "";
+}
+
 // ============================================================================
 // UI HELPERS
 // ============================================================================
@@ -196,8 +204,7 @@ function renderReport(report?: Report) {
     const source = report.source || "unknown";
     reportMeta.textContent = `Updated: ${date} • Source: ${source}`;
   }
-
-  updateSpeakingAs(undefined, report);
+  updateSpeakingAs();
 }
 
 function buildContextText(report?: Report) {
@@ -232,7 +239,7 @@ async function fetchConfig(): Promise<Config> {
       currentProfileId = cfg.activeProfileId;
     }
     profileSelect.value = currentProfileId;
-    updateSpeakingAs(cfg, cachedReport || undefined);
+    updateSpeakingAs();
   }
 
   return cfg;
