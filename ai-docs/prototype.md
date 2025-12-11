@@ -173,6 +173,7 @@ Keep fields small (summary ≤ 8k chars) because we send them over WebSocket as 
 - Client now fetches report on load, renders summary panel, sends `contextual_update` with report text, and persists transcript turns (when Convex configured).
 - README and `.dev.vars.example` updated with Convex envs and report flow.
 - Sample `public/report.json` included for offline demos.
+- Convex schema + functions (`storeReport`, `getLatestReport`, `appendTranscript`, `listTranscript`) added; local Convex deployment seeded successfully.
 
 **Remaining**
 - Create Convex deployment and implement functions (`parrot:storeReport`, `parrot:getLatestReport`, `parrot:appendTranscript`) per spec.
