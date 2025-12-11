@@ -22,6 +22,7 @@ let isRefreshing = false;
 interface Config {
   anamSessionToken: string;
   elevenLabsAgentId: string;
+  elevenLabsApiKey?: string;
 }
 
 interface Report {
@@ -360,7 +361,8 @@ async function start() {
           );
         },
       },
-      buildContextText(report || undefined)
+      buildContextText(report || undefined),
+      config.elevenLabsApiKey
     );
   } catch (error) {
     showError(error instanceof Error ? error.message : "Failed to start");

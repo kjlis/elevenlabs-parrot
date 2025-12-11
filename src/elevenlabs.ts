@@ -67,11 +67,16 @@ async function setupMicrophone() {
 export async function connectElevenLabs(
   agentId: string,
   callbacks: ElevenLabsCallbacks,
-  contextText?: string
+  contextText?: string,
+  apiKey?: string
 ) {
-  websocket = new WebSocket(
-    `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`
-  );
+  const url = new URL("wss://api.elevenlabs.io/v1/convai/conversation");
+  url.searchParams.set("agent_id", agentId);
+  if (apiKey) {
+    url.searchParams.set("xi_api_key", apiKey);
+  }
+
+  websocket = new WebSocket(url.toString());
 
   websocket.onopen = async () => {
     console.log("[11Labs] WebSocket connected");

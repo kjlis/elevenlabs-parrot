@@ -82,6 +82,7 @@ Create a `.dev.vars` file in the project root:
 ANAM_API_KEY=your_anam_api_key
 ANAM_AVATAR_ID=your_avatar_id
 ELEVENLABS_AGENT_ID=your_agent_id
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
 # Optional: point to a live summary instead of the local JSON
 # REPORT_SOURCE_URL=https://your-hosted-coderabbit-summary.json
 # Optional: Convex for live reports + transcripts
@@ -200,6 +201,7 @@ persistTranscript(role, text);
 | `ANAM_API_KEY` | Anam API key | [lab.anam.ai](https://lab.anam.ai) → Settings → API Keys |
 | `ANAM_AVATAR_ID` | Avatar to render | [lab.anam.ai](https://lab.anam.ai) → Avatars |
 | `ELEVENLABS_AGENT_ID` | ElevenLabs Agent ID | [elevenlabs.io](https://elevenlabs.io) → Agents |
+| `ELEVENLABS_API_KEY` | ElevenLabs API key (for ConvAI WS auth in browser) | [elevenlabs.io](https://elevenlabs.io) |
 | `REPORT_SOURCE_URL` | (Optional) URL to latest CodeRabbit summary JSON | Any reachable URL returning the report shape |
 | `CONVEX_URL` | (Optional) Convex deployment URL | Convex dashboard |
 | `VITE_CONVEX_URL` | (Optional) Local Convex dev URL (fallback) | `convex dev` default http://127.0.0.1:3210 |
