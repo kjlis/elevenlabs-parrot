@@ -30,9 +30,10 @@ A demonstration of integrating [ElevenLabs Conversational AI](https://elevenlabs
 
 ### Report Context Flow
 
-1. **Worker fetches latest CodeRabbit report** via `/api/report` (static `public/report.json` or `REPORT_SOURCE_URL`).
+1. **Worker fetches latest CodeRabbit report** via `/api/report` (Convex if configured, otherwise `public/report.json` or `REPORT_SOURCE_URL`).
 2. **Client shows summary** above the transcript.
 3. **Context sent to ElevenLabs** on WebSocket open using `contextual_update`, so the agent answers with project-specific details.
+4. **Transcripts persisted** via `/api/transcript` when Convex is configured.
 
 ### Key Concept: Audio Passthrough
 
@@ -83,6 +84,10 @@ ANAM_AVATAR_ID=your_avatar_id
 ELEVENLABS_AGENT_ID=your_agent_id
 # Optional: point to a live summary instead of the local JSON
 # REPORT_SOURCE_URL=https://your-hosted-coderabbit-summary.json
+# Optional: Convex for live reports + transcripts
+# CONVEX_URL=https://<deployment>.convex.cloud
+# CONVEX_ADMIN_KEY=<convex_admin_key>
+# REPORT_PROJECT_ID=your-default-project-id
 ```
 
 ### 3. Provide a report
@@ -112,7 +117,8 @@ src/
     ├── index.tsx      # Main page UI
     └── api/
         ├── config.ts  # Server-side config endpoint
-        └── report.ts  # Latest report endpoint (static or remote)
+        ├── report.ts  # Latest report endpoint (Convex, remote, or static)
+        └── transcript.ts # Persists transcript turns to Convex
 public/
 └── report.json        # Local fallback CodeRabbit summary
 ```
@@ -170,6 +176,9 @@ onInterrupt: () => {
 
 // Pass report text to ElevenLabs once at connect time
 connectElevenLabs(agentId, callbacks, buildContextText(report));
+
+// Persist transcript turns (if Convex is configured)
+persistTranscript(role, text);
 ```
 
 ## Environment Variables
@@ -180,6 +189,9 @@ connectElevenLabs(agentId, callbacks, buildContextText(report));
 | `ANAM_AVATAR_ID` | Avatar to render | [lab.anam.ai](https://lab.anam.ai) → Avatars |
 | `ELEVENLABS_AGENT_ID` | ElevenLabs Agent ID | [elevenlabs.io](https://elevenlabs.io) → Agents |
 | `REPORT_SOURCE_URL` | (Optional) URL to latest CodeRabbit summary JSON | Any reachable URL returning the report shape |
+| `CONVEX_URL` | (Optional) Convex deployment URL | Convex dashboard |
+| `CONVEX_ADMIN_KEY` | (Optional) Server auth for Convex queries/mutations | Convex dashboard |
+| `REPORT_PROJECT_ID` | (Optional) Default project id for report/transcript calls | Your chosen project id |
 
 ## ElevenLabs Agent Configuration
 

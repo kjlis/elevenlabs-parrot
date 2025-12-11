@@ -15,6 +15,7 @@ import { connectElevenLabs, stopElevenLabs } from "./elevenlabs";
 let isConnected = false;
 let anamClient: AnamClient | null = null;
 let cachedReport: Report | null = null;
+let conversationId: string | null = null;
 
 interface Config {
   anamSessionToken: string;
@@ -85,6 +86,8 @@ function addMessage(role: "user" | "agent" | "system", text: string) {
     </div>`
   );
   transcript.scrollTop = transcript.scrollHeight;
+
+  void persistTranscript(role, text);
 }
 
 function showError(message: string) {
@@ -147,6 +150,28 @@ async function fetchReport(): Promise<Report | null> {
   return res.json();
 }
 
+async function persistTranscript(
+  role: "user" | "agent" | "system",
+  text: string
+) {
+  if (!conversationId) return;
+  const projectId = cachedReport?.projectId || "default-project";
+  try {
+    await fetch("/api/transcript", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectId,
+        conversationId,
+        role,
+        text,
+      }),
+    });
+  } catch (error) {
+    console.warn("Transcript persist failed:", error);
+  }
+}
+
 async function loadReport() {
   try {
     cachedReport = await fetchReport();
@@ -166,6 +191,8 @@ async function start() {
   btnText.textContent = "Connecting...";
 
   try {
+    conversationId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
+
     // Fetch config + report in parallel
     const [config, report] = await Promise.all([
       fetchConfig(),

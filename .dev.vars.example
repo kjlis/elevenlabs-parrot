@@ -3,3 +3,7 @@ ANAM_AVATAR_ID=your_anam_avatar_id_here
 ELEVENLABS_AGENT_ID=your_elevenlabs_agent_id_here
 # Optional: point to hosted CodeRabbit summary JSON (falls back to public/report.json)
 # REPORT_SOURCE_URL=https://example.com/coderabbit-summary.json
+# Optional: Convex for reports + transcripts
+# CONVEX_URL=https://your-deployment.convex.cloud
+# CONVEX_ADMIN_KEY=your_convex_admin_key
+# REPORT_PROJECT_ID=parrot/demo
